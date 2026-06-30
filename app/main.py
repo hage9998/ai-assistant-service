@@ -1,8 +1,18 @@
 from fastapi import FastAPI
 
-app = FastAPI()
+
+def create_app() -> FastAPI:
+    """FastAPI application factory."""
+    app = FastAPI(
+        title="Gamification of Life - AI-Assistant Service",
+        description=(
+            "API for the AI-Assistant Service. "
+            "See the [documentation](/docs) for more information."
+        ),
+        version="1.0.0",
+    )
+
+    return app
 
 
-@app.get("/")
-def root():
-    return {"message": "Hello FastAPI"}
+app = create_app()
