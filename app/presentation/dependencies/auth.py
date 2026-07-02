@@ -52,3 +52,6 @@ async def get_current_user(
         email=payload["email"],
         name=payload.get("name", ""),
     )
+
+
+CurrentUserDependency = Annotated[CurrentUser, Depends(get_current_user)]
