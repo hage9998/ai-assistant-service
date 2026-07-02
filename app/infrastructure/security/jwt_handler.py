@@ -21,3 +21,13 @@ def decode_token(token: str, settings: Settings) -> JwtPayload:
     - validates signature and expiration (done by the `jose` lib itself);
     - ensures `sub` and `email` are present in the payload.
     """
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm],
+    )
+    sub = payload.get("sub")
+    email = payload.get("email")
+    name = payload.get("name", "")
+
+    return JwtPayload(sub=sub, email=email, name=name)
