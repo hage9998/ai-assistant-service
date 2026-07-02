@@ -21,11 +21,17 @@ def decode_token(token: str, settings: Settings) -> JwtPayload:
     - validates signature and expiration (done by the `jose` lib itself);
     - ensures `sub` and `email` are present in the payload.
     """
-    payload = jwt.decode(
-        token,
-        settings.jwt_secret,
-        algorithms=[settings.jwt_algorithm],
-    )
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except ExpiredSignatureError as exc:
+        raise InvalidTokenException("Authentication token expired.") from exc
+    except JWTError as exc:
+        raise InvalidTokenException("Invalid authentication token.") from exc
+
     sub = payload.get("sub")
     email = payload.get("email")
     name = payload.get("name", "")
