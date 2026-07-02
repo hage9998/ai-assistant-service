@@ -41,7 +41,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @asynccontextmanager
 async def lifespan_db() -> AsyncGenerator[None, None]:
-    """Context manager utilizado no lifespan do FastAPI para encerrar o engine."""
+    """Context manager used in the FastAPI lifespan to dispose the engine."""
     try:
         yield
     finally:
