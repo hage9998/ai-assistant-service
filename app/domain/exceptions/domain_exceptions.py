@@ -14,3 +14,10 @@ class InvalidTokenException(DomainException):
 
     error_code = "invalid_token"
     message = "Invalid authentication token."
+
+
+class MissingTokenException(DomainException):
+    """Raised when no token is found in the request."""
+
+    error_code = "missing_token"
+    message = "Authentication token not found."
