@@ -1,5 +1,9 @@
 from fastapi import Request
 
+from app.domain.exceptions.domain_exceptions import (
+    MissingTokenException,
+)
+
 
 def _extract_token_from_request(request: Request) -> str:
     """Extract the JWT from the request headers or cookies.
@@ -18,3 +22,5 @@ def _extract_token_from_request(request: Request) -> str:
     cookie_token = request.cookies.get("accessToken") or request.cookies.get("token")
     if cookie_token:
         return cookie_token
+
+    raise MissingTokenException
