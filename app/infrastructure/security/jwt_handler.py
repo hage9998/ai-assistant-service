@@ -7,7 +7,7 @@ from app.infrastructure.config.settings import Settings
 
 
 class JwtPayload(TypedDict):
-    """Expected JWT payload format, equivalent to NestJS's `JwtPayload`."""
+    """Expected format of the JWT payload, equivalent to NestJS's `JwtPayload`."""
 
     sub: str
     email: str
@@ -15,7 +15,7 @@ class JwtPayload(TypedDict):
 
 
 def decode_token(token: str, settings: Settings) -> JwtPayload:
-    """Decode and validate the JWT, returning the typed payload.
+    """Decodes and validates the JWT, returning the typed payload.
 
     Equivalent to NestJS's `JwtStrategy.validate()` method:
     - validates signature and expiration (done by the `jose` lib itself);
@@ -35,5 +35,10 @@ def decode_token(token: str, settings: Settings) -> JwtPayload:
     sub = payload.get("sub")
     email = payload.get("email")
     name = payload.get("name", "")
+
+    if not sub or not email:
+        raise InvalidTokenException(
+            "Invalid token payload: 'sub' and 'email' fields are required."
+        )
 
     return JwtPayload(sub=sub, email=email, name=name)
