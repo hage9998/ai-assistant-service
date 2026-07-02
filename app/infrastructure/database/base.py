@@ -1,4 +1,4 @@
-"""Base declarativa para todos os modelos ORM da aplicação."""
+"""Declarative base for all ORM models of the application."""
 
 from sqlalchemy.orm import DeclarativeBase
 
