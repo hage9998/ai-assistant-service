@@ -2,6 +2,7 @@ from app.application.interfaces.advice_dto import AdviceRequestDTO, AdviceRespon
 from app.application.interfaces.llm_provider import LLMProvider
 from app.domain.entities.advice_log import AdviceLog
 from app.domain.entities.message import Message, MessageRole
+from app.domain.repositories.advice_log_repository import AdviceLogRepository
 
 _GENERATION_TRIGGER = (
     "Conceda-me um novo conselho para minha jornada de hoje, ó sábio oráculo."
@@ -32,7 +33,7 @@ class GenerateAdviceUseCase:
         self, llm_provider: LLMProvider, advice_log_repository: AdviceLogRepository
     ) -> None:
         self._llm_provider = llm_provider
-        self._advice_log = advice_log
+        self._advice_log_repository = advice_log_repository
 
     async def execute(self, request: AdviceRequestDTO) -> AdviceResponseDTO:
         messages = [Message(role=MessageRole.USER, content=_GENERATION_TRIGGER)]
@@ -46,4 +47,6 @@ class GenerateAdviceUseCase:
 
         advice_log = AdviceLog(user_id=request.user_id, advice=normalizedAdvice)
 
-        # return AdviceResponseDTO(message=advice)
+        await self._advice_log_repository.save(advice_log)
+
+        return AdviceResponseDTO(message=normalizedAdvice)
