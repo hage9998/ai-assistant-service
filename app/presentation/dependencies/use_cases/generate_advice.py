@@ -1,4 +1,5 @@
 """Fábrica de Dependency Injection do `GenerateAdviceUseCase`."""
+
 from typing import Annotated
 
 from fastapi import Depends
@@ -13,7 +14,7 @@ def get_generate_advice_use_case(
     llm_provider: Annotated[LLMProvider, Depends(get_llm_provider)],
     advice_log_repository: AdviceLogRepositoryDependency,
 ) -> GenerateAdviceUseCase:
-    """Fornece o caso de uso `GenerateAdviceUseCase` já montado."""
+    """Provides a singleton instance of the GenerateAdviceUseCase."""
     return GenerateAdviceUseCase(
         llm_provider=llm_provider,
         advice_log_repository=advice_log_repository,
