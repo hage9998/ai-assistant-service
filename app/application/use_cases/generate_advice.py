@@ -1,3 +1,5 @@
+from venv import logger
+
 from app.application.interfaces.advice_dto import AdviceRequestDTO, AdviceResponseDTO
 from app.application.interfaces.llm_provider import LLMProvider
 from app.domain.entities.advice_log import AdviceLog
@@ -38,10 +40,15 @@ class GenerateAdviceUseCase:
     async def execute(self, request: AdviceRequestDTO) -> AdviceResponseDTO:
         messages = [Message(role=MessageRole.USER, content=_GENERATION_TRIGGER)]
 
-        advice = await self._llm_provider.generate(
-            messages=messages,
-            system_prompt=MEDIEVAL_ADVICE_SYSTEM_PROMPT,
-        )
+        try:
+            advice = await self._llm_provider.generate(
+                messages=messages,
+                system_prompt=MEDIEVAL_ADVICE_SYSTEM_PROMPT,
+            )
+        except Exception as e:
+            logger.exception("Failed to generate advice")
+
+            raise Exception(f"Error generating advice: {e}")
 
         normalizedAdvice = advice.strip()
 

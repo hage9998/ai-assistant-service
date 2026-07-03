@@ -21,3 +21,10 @@ class MissingTokenException(DomainException):
 
     error_code = "missing_token"
     message = "Authentication token not found."
+
+
+class LLMProviderException(DomainException):
+    """Raised when a communication failure with the LLM provider occurs."""
+
+    error_code = "llm_provider_error"
+    message = "Failed to communicate with the language provider (LLM)."
