@@ -6,3 +6,6 @@ pydantic-settings
 httpx
 requests
 ollama
+langchain
+langchain-core
+langchain-ollama

@@ -1,9 +1,5 @@
-"""Fábrica de Dependency Injection do `GenerateAdviceUseCase`."""
-
 from typing import Annotated
-
 from fastapi import Depends
-
 from app.application.interfaces.llm_provider import LLMProvider
 from app.application.use_cases.generate_advice import GenerateAdviceUseCase
 from app.presentation.dependencies.llm_provider import get_llm_provider

@@ -11,6 +11,7 @@ annotated-types==0.7.0
 anyio==4.14.1
     # via
     #   httpx
+    #   langsmith
     #   starlette
 certifi==2026.6.17
     # via
@@ -25,6 +26,8 @@ click==8.4.2
     # via uvicorn
 cryptography==49.0.0
     # via python-jose
+distro==1.9.0
+    # via langsmith
 ecdsa==0.19.2
     # via python-jose
 fastapi==0.138.2
@@ -40,14 +43,61 @@ httpcore==1.0.9
 httpx==0.28.1
     # via
     #   -r requirements.in
+    #   langgraph-sdk
+    #   langsmith
     #   ollama
 idna==3.18
     # via
     #   anyio
     #   httpx
     #   requests
-ollama==0.6.2
+jsonpatch==1.33
+    # via langchain-core
+jsonpointer==3.1.1
+    # via jsonpatch
+langchain==1.3.11
     # via -r requirements.in
+langchain-core==1.4.8
+    # via
+    #   -r requirements.in
+    #   langchain
+    #   langchain-ollama
+    #   langgraph
+    #   langgraph-checkpoint
+    #   langgraph-prebuilt
+    #   langgraph-sdk
+langchain-ollama==1.1.0
+    # via -r requirements.in
+langchain-protocol==0.0.18
+    # via
+    #   langchain-core
+    #   langgraph-sdk
+langgraph==1.2.7
+    # via langchain
+langgraph-checkpoint==4.1.1
+    # via
+    #   langgraph
+    #   langgraph-prebuilt
+langgraph-prebuilt==1.1.0
+    # via langgraph
+langgraph-sdk==0.4.2
+    # via langgraph
+langsmith==0.9.7
+    # via langchain-core
+ollama==0.6.2
+    # via
+    #   -r requirements.in
+    #   langchain-ollama
+orjson==3.11.9
+    # via
+    #   langgraph-sdk
+    #   langsmith
+ormsgpack==1.12.2
+    # via langgraph-checkpoint
+packaging==26.2
+    # via
+    #   langchain-core
+    #   langsmith
 pyasn1==0.6.3
     # via
     #   python-jose
@@ -57,6 +107,10 @@ pycparser==3.0
 pydantic==2.13.4
     # via
     #   fastapi
+    #   langchain
+    #   langchain-core
+    #   langgraph
+    #   langsmith
     #   ollama
     #   pydantic-settings
 pydantic-core==2.46.4
@@ -67,20 +121,34 @@ python-dotenv==1.2.2
     # via pydantic-settings
 python-jose[cryptography]==3.5.0
     # via -r requirements.in
+pyyaml==6.0.3
+    # via langchain-core
 requests==2.34.2
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   langsmith
+    #   requests-toolbelt
+requests-toolbelt==1.0.0
+    # via langsmith
 rsa==4.9.1
     # via python-jose
 six==1.17.0
     # via ecdsa
+sniffio==1.3.1
+    # via langsmith
 sqlalchemy==2.0.51
     # via -r requirements.in
 starlette==1.3.1
     # via fastapi
+tenacity==9.1.4
+    # via langchain-core
 typing-extensions==4.16.0
     # via
     #   anyio
     #   fastapi
+    #   langchain-core
+    #   langchain-protocol
+    #   langsmith
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
@@ -93,5 +161,19 @@ typing-inspection==0.4.2
     #   pydantic-settings
 urllib3==2.7.0
     # via requests
+uuid-utils==0.16.2
+    # via
+    #   langchain-core
+    #   langsmith
 uvicorn==0.49.0
     # via -r requirements.in
+websockets==15.0.1
+    # via
+    #   langgraph-sdk
+    #   langsmith
+xxhash==3.8.0
+    # via
+    #   langgraph
+    #   langsmith
+zstandard==0.25.0
+    # via langsmith
