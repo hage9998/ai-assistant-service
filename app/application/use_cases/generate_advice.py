@@ -4,6 +4,7 @@ from app.application.interfaces.advice_dto import AdviceRequestDTO, AdviceRespon
 from app.application.interfaces.llm_provider import LLMProvider
 from app.domain.entities.advice_log import AdviceLog
 from app.domain.entities.message import Message, MessageRole
+from app.domain.exceptions.domain_exceptions import LLMProviderException
 from app.domain.repositories.advice_log_repository import AdviceLogRepository
 
 _GENERATION_TRIGGER = (
@@ -48,7 +49,7 @@ class GenerateAdviceUseCase:
         except Exception as e:
             logger.exception("Failed to generate advice")
 
-            raise Exception(f"Error generating advice: {e}")
+            raise LLMProviderException("Error generating advice") from e
 
         normalizedAdvice = advice.strip()
 
