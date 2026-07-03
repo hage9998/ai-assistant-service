@@ -3,3 +3,6 @@ uvicorn
 sqlalchemy
 python-jose[cryptography]
 pydantic-settings
+httpx
+requests
+ollama
