@@ -1,5 +1,6 @@
 from app.application.interfaces.advice_dto import AdviceRequestDTO, AdviceResponseDTO
 from app.application.interfaces.llm_provider import LLMProvider
+from app.domain.entities.advice_log import AdviceLog
 from app.domain.entities.message import Message, MessageRole
 
 _GENERATION_TRIGGER = (
@@ -27,8 +28,11 @@ desenvolvimento pessoal do usuário, mesmo sem citar tarefas específicas.
 class GenerateAdviceUseCase:
     """ """
 
-    def __init__(self, llm_provider: LLMProvider) -> None:
+    def __init__(
+        self, llm_provider: LLMProvider, advice_log_repository: AdviceLogRepository
+    ) -> None:
         self._llm_provider = llm_provider
+        self._advice_log = advice_log
 
     async def execute(self, request: AdviceRequestDTO) -> AdviceResponseDTO:
         messages = [Message(role=MessageRole.USER, content=_GENERATION_TRIGGER)]
@@ -37,3 +41,9 @@ class GenerateAdviceUseCase:
             messages=messages,
             system_prompt=MEDIEVAL_ADVICE_SYSTEM_PROMPT,
         )
+
+        normalizedAdvice = advice.strip()
+
+        advice_log = AdviceLog(user_id=request.user_id, advice=normalizedAdvice)
+
+        # return AdviceResponseDTO(message=advice)
