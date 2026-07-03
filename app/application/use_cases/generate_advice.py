@@ -30,7 +30,7 @@ desenvolvimento pessoal do usuário, mesmo sem citar tarefas específicas.
 
 
 class GenerateAdviceUseCase:
-    """ """
+    """Orchestrates the advice generation use case."""
 
     def __init__(
         self, llm_provider: LLMProvider, advice_log_repository: AdviceLogRepository
