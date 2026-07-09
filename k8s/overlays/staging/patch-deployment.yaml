@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: life-gamefication
+  namespace: life-gamefication-dev
+spec:
+  template:
+    spec:
+      containers:
+        - name: life-gamefication
+          image: your-image:staging
+          env:
+            - name: ENVIRONMENT
+              value: "staging"

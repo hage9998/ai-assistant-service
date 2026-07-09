@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant-api-deployment
+  namespace: life-gamefication-dev
+spec:
+  template:
+    spec:
+      containers:
+        - name: ai-assistant-api-container
+          image: ai-assistant-api:latest
+          imagePullPolicy: Never
+          env:
+            - name: ENVIRONMENT
+              value: "development"
+            # # ── OTel Vars ────────────────────────────────────
+            # - name: OTEL_SERVICE_NAME
+            #   value: "ai-assistant-api"
+            # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            #   value: "http://localhost:4317"
+          envFrom:
+            - configMapRef:
+                name: ai-assistant-api-config

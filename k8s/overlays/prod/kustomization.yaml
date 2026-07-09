@@ -1,0 +1,7 @@
+resources:
+  - ../../base
+  - patch-deployment.yaml
+
+nameSuffix: -prod
+commonLabels:
+  environment: production

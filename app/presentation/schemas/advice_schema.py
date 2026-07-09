@@ -1,4 +1,5 @@
 """Pydantic (response) schema for the daily advice endpoint."""
+
 from pydantic import BaseModel, Field
 
 

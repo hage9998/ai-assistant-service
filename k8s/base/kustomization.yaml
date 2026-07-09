@@ -1,0 +1,9 @@
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+  # - otelconfigmap.yaml
+  # - metricsService.yaml
+
+namespace: life-gamefication-dev

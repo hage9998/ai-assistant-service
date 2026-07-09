@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-api-config
+  namespace: life-gamefication-dev
+data:
+  # App
+  APP_NAME: gamification-llm-service
+  ENVIRONMENT: development
+  DEBUG: true
+
+  # Database
+  DATABASE_URL: postgresql+asyncpg://postgres:root@postgres-profile.life-gamefication-dev.svc.cluster.local:5432/general
+  DATABASE_ECHO: false
+
+  # JWT (deve ser a MESMA secret configurada no backend NestJS)
+  JWT_SECRET: changeme-super-secret
+  JWT_ALGORITHM: HS256
+
+  # LLM / Ollama
+  OLLAMA_BASE_URL: http://ollama.default.svc.cluster.local:11434
+  OLLAMA_MODEL: llama3.1
+  LLM_TEMPERATURE: 0.7
+
+  # Logging
+  LOG_LEVEL: INFO

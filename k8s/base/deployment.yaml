@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant-api-deployment
+  namespace: life-gamefication-dev
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-assistant-api
+  template:
+    metadata:
+      labels:
+        app: ai-assistant-api
+    spec:
+      containers:
+        - name: ai-assistant-api-container
+          image: ai-assistant-api:1.0.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+
+        # ── Sidecar: OTel Collector ──────────────────────────────
+        # - name: otel-collector
+        #   image: otel/opentelemetry-collector-contrib:latest
+        #   args: ["--config=/etc/otel/config.yaml"]
+        #   ports:
+        #     - containerPort: 4317
+        #     - containerPort: 4318
+        #     - containerPort: 8889
+        #   volumeMounts:
+        #     - name: otel-config
+        #       mountPath: /etc/otel
+        #   resources:
+        #     requests:
+        #       cpu: 50m
+        #       memory: 64Mi
+        #     limits:
+        #       cpu: 200m
+        #       memory: 128Mi
+
+      volumes:
+        - name: otel-config
+          configMap:
+            name: otel-collector-sidecar-config
