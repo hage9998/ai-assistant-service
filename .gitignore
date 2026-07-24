@@ -55,3 +55,6 @@ Thumbs.db
 
 # Misc
 .cache/
+
+# Claude Code personal instructions
+CLAUDE.local.md
