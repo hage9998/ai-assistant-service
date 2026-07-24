@@ -1,11 +1,19 @@
 import logging
+import time
 
 from langchain_ollama import ChatOllama
 
 from app.domain.entities.message import Message
 from app.infrastructure.llm.chain_factory import build_chat_chain, to_langchain_messages
+from app.infrastructure.observability.instrumentation import get_meter
 
 logger = logging.getLogger(__name__)
+
+_generation_duration_histogram = get_meter().create_histogram(
+    "llm_generation_duration_seconds",
+    unit="s",
+    description="Duration of LLM advice generation calls",
+)
 
 
 class OllamaProvider:
@@ -40,7 +48,17 @@ class OllamaProvider:
             len(history),
         )
 
-        result: str = await self._chain.ainvoke(
-            {"system_prompt": system_prompt, "history": history}
-        )
+        start = time.perf_counter()
+        status = "success"
+        try:
+            result: str = await self._chain.ainvoke(
+                {"system_prompt": system_prompt, "history": history}
+            )
+        except Exception:
+            status = "error"
+            raise
+        finally:
+            _generation_duration_histogram.record(
+                time.perf_counter() - start, {"status": status}
+            )
         return result

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
 
+    # CORS
+    cors_origins: list[str] = ["http://192.168.49.2:30007"]
+
     # LLM / Ollama
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1"

@@ -1,6 +1,6 @@
 from venv import logger
 
-from app.application.interfaces.advice_dto import AdviceRequestDTO, AdviceResponseDTO
+from app.application.dto.advice_dto import AdviceRequestDTO, AdviceResponseDTO
 from app.application.interfaces.llm_provider import LLMProvider
 from app.domain.entities.advice_log import AdviceLog
 from app.domain.entities.message import Message, MessageRole
