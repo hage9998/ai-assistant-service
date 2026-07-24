@@ -1,0 +1,47 @@
+# Virtual environment
+.venv
+venv
+env
+
+# Byte-compiled / cache
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+*.md
+
+# Kubernetes manifests (not needed inside the image)
+k8s
+
+# Packaging
+build
+dist
+*.egg-info
+.eggs
