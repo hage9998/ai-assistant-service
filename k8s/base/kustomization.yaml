@@ -3,7 +3,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - configmap.yaml
-  # - otelconfigmap.yaml
-  # - metricsService.yaml
+  - otelconfigmap.yaml
+  - metricsService.yaml
 
 namespace: life-gamefication-dev

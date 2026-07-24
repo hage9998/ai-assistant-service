@@ -2,14 +2,14 @@ apiVersion: v1
 kind: Service
 
 metadata:
-  name: auth-api-metrics
+  name: ai-assistant-api-metrics
   namespace: life-gamefication-dev
   labels:
-    app: auth-api
+    app: ai-assistant-api
 
 spec:
   selector:
-    app: auth-api
+    app: ai-assistant-api
 
   ports:
     - name: metrics

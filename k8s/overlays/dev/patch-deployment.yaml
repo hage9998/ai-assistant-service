@@ -13,11 +13,11 @@ spec:
           env:
             - name: ENVIRONMENT
               value: "development"
-            # # ── OTel Vars ────────────────────────────────────
-            # - name: OTEL_SERVICE_NAME
-            #   value: "ai-assistant-api"
-            # - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            #   value: "http://localhost:4317"
+            # ── OTel Vars ────────────────────────────────────
+            - name: OTEL_SERVICE_NAME
+              value: "ai-assistant-api"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://localhost:4317"
           envFrom:
             - configMapRef:
                 name: ai-assistant-api-config
