@@ -5,19 +5,22 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import Runnable
 
 
+def _build_prompt() -> ChatPromptTemplate:
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", "{system_prompt}"),
+            MessagesPlaceholder(variable_name="history"),
+        ]
+    )
+
+
 def build_chat_chain(llm: BaseChatModel) -> Runnable:
     """Builds the default chain: system prompt + history -> model -> text.
 
     The chain receives a dict in the format `{"history": list[BaseMessage]}`
     and returns a `str` with the model's response.
     """
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", "{system_prompt}"),
-            MessagesPlaceholder(variable_name="history"),
-        ]
-    )
-    return prompt | llm | StrOutputParser()
+    return _build_prompt() | llm | StrOutputParser()
 
 
 def build_tool_calling_chain(llm: BaseChatModel, tools: list[dict]) -> Runnable[dict, AIMessage]:
@@ -26,13 +29,7 @@ def build_tool_calling_chain(llm: BaseChatModel, tools: list[dict]) -> Runnable[
     Returns the raw `AIMessage` (not just text) so the caller can inspect
     `tool_calls` to decide whether the model wants to call a tool.
     """
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", "{system_prompt}"),
-            MessagesPlaceholder(variable_name="history"),
-        ]
-    )
-    return prompt | llm.bind_tools(tools)
+    return _build_prompt() | llm.bind_tools(tools)
 
 
 def to_langchain_messages(
