@@ -1,68 +1,78 @@
-# Spec: Observabilidade (OTel SDK + sidecar collector) para métricas no Grafana
+# Spec: Rota de prompt com listagem de tarefas via MCP service
 
 ## Objetivo
 
-Instrumentar o `ai-assistant-service` com OpenTelemetry Python SDK, enviando métricas (e traces) via OTLP para um sidecar OTel Collector no mesmo pod, espelhando exatamente o padrão já usado pelo `auth-service` (NestJS), para que o Prometheus (via `ServiceMonitor`) e o Grafana consigam visualizar as métricas do serviço.
+Criar uma nova rota HTTP que recebe um prompt em linguagem natural do usuário e, quando o prompt pedir ou exigir a listagem de tarefas, o serviço consulta um MCP service externo (já existente) para obter essa lista antes de responder.
 
 ## Contexto
 
-- O pedido original era usar `prometheus-fastapi-instrumentator` (já presente em `requirements.in`/`requirements.txt`, sem uso no código). Após inspecionar o `auth-service`, decidimos seguir o mesmo padrão dele em vez disso: **OpenTelemetry SDK fazendo push OTLP para um sidecar Collector**, não scrape direto de `/metrics` pelo Prometheus. `prometheus-fastapi-instrumentator` será removido do `requirements.in`.
-- Referência 1:1 no `auth-service`:
-  - `src/infrastructure/observability/instrumentation.ts`: `NodeSDK` com `OTLPTraceExporter` + `OTLPMetricExporter` (`PeriodicExportingMetricReader`, 5s) apontando para `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317`), `resource` com `service.name`/`service.version` vindos de `OTEL_SERVICE_NAME`/`npm_package_version`, e auto-instrumentations (http, express, pg, redis, nestjs-core).
-  - `k8s/base/deployment.yaml`: sidecar `otel-collector` (`otel/opentelemetry-collector-contrib`) montando `otel-collector-sidecar-config` em `/etc/otel`, portas 4317/4318/8889.
-  - `k8s/base/otelconfigmap.yaml`: `receiver otlp` (grpc 4317 / http 4318) → `processor batch` → `exporter otlp/jaeger` (traces) e `exporter prometheus` (metrics, `0.0.0.0:8889`).
-  - `k8s/base/metricsService.yaml`: `Service` `auth-api-metrics`, seleciona `app: auth-api`, expõe porta `8889` nomeada `metrics`.
-  - `k8s/overlays/dev/patch-deployment.yaml`: injeta `OTEL_SERVICE_NAME` e `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` no container da app.
-  - `k8s-infra/observability/prometheus.yaml`: `ServiceMonitor` (`monitoring.coreos.com/v1`) selecionando `app: auth-api`, porta `metrics`, `interval: 15s`, label `release: monitoring` (exigido pelo kube-prometheus-stack Operator).
-- No `ai-assistant-service`, os arquivos `k8s/base/otelconfigmap.yaml` e `k8s/base/metricsService.yaml` já existem mas foram copiados do `auth-service` sem adaptar nomes/selectors (ainda dizem `auth-api`), e estão comentados em `k8s/base/kustomization.yaml`. O sidecar no `deployment.yaml` e as env vars `OTEL_*` no overlay `dev` também já estão presentes, comentados, prontos para ativar.
-- Não existe `k8s-infra/observability/prometheus.yaml` equivalente para este serviço — é preciso criar um novo `ServiceMonitor` (provavelmente em `k8s-infra/observability/`, mesmo diretório do `auth-api`, para manter o padrão de infra compartilhada).
+- Sistema poliglota: este serviço (`ai-assistant-service`, FastAPI) já se comunica com um backend NestJS (JWT compartilhado). Existe também um `mcp_service` (fora deste repositório) que expõe, via **FastMCP**, a tool `get_task_columns`.
+- `get_task_columns`:
+  - Não recebe parâmetros explícitos no schema MCP — só o `ctx: Context` injetado pelo FastMCP.
+  - Autentica repassando o header `Cookie` da requisição de entrada (`get_cookie_header(ctx)`) para o `profile-api-service`, chamando `GET /profile/task/columns`.
+  - Retorna `list[dict]`, cada item no formato `{ "id": ..., "name": ..., "tasks": [...] }`.
+  - Levanta `ToolError` se não houver cookie de auth ou se o `profile-api-service` responder 401/403.
+- Hoje **não existe nenhuma integração MCP neste repositório** — nem código, nem dependência (`mcp`/`langchain-mcp-adapters`), nem config. É uma integração greenfield.
+- Também não existe hoje nenhum client HTTP direto (`httpx`) usado em `app/infrastructure/` — o cliente MCP será o primeiro caso.
+- A decisão de "o prompt pede/precisa listar tarefas" será feita via **tool calling do LLM** (o modelo Ollama, já usado para o `advice`, decide se deve chamar a tool `get_task_columns`), não por uma heurística/classificador separado.
+- A rota é **nova e independente** da rota de advice existente (`GET /advice/daily`); não altera o fluxo atual de `GenerateAdviceUseCase`.
+
+### Suposições a validar (assumptions)
+
+Estes pontos não foram confirmados com certeza total e devem ser validados na fase de arquitetura/implementação:
+
+1. **Transporte MCP**: o `mcp_service` expõe HTTP (Streamable HTTP ou SSE, padrão FastMCP moderno). Vamos assumir **Streamable HTTP** via SDK oficial `mcp` (Python), configurável por env var (`MCP_SERVICE_URL`), com endpoint/porta a confirmar.
+2. **Repasse de auth**: o cliente desta rota deve enviar tanto o JWT Bearer (auth deste serviço) quanto o cookie de sessão do `profile-api-service` na mesma requisição; a rota extrai o `Cookie` do request recebido e repassa como header `Cookie` na chamada MCP. Não há troca/derivação de credencial — é passthrough puro.
+3. Nome exato da env var de URL do MCP service e se há autenticação adicional entre `ai-assistant-service` e `mcp_service` (ex.: mTLS, API key de serviço) — a assumir como "não há" por enquanto (mesma rede interna do cluster).
 
 ## Requisitos Funcionais
 
-1. Criar `app/infrastructure/observability/instrumentation.py`, importado como primeira coisa em `app/main.py` (antes de qualquer outro import de app), configurando:
-   - `Resource` com `service.name` = `OTEL_SERVICE_NAME` (default `"ai-assistant-api"`) e `service.version` = versão do app (`"1.0.0"`, mesma usada no `FastAPI(version=...)`).
-   - `TracerProvider` com `BatchSpanProcessor(OTLPSpanExporter(endpoint=OTEL_EXPORTER_OTLP_ENDPOINT))`.
-   - `MeterProvider` com `PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=...), export_interval_millis=5000)`.
-   - `OTEL_EXPORTER_OTLP_ENDPOINT` lido de env var, default `http://localhost:4317` (igual ao Node).
-2. Auto-instrumentar com `opentelemetry-instrumentation-fastapi` (aplicado sobre o `app` em `create_app()`) e `opentelemetry-instrumentation-sqlalchemy` (equivalente ao `instrumentation-pg` do Node, instrumenta o `engine` async).
-3. Métrica customizada de duração da chamada ao LLM (Ollama): um `Histogram` OTel (`meter.create_histogram("llm_generation_duration_seconds", ...)`) registrado em `OllamaProvider.generate`, com atributo `status` (`success`/`error`).
-4. K8s (`ai-assistant-service`):
-   - Corrigir `k8s/base/metricsService.yaml`: nome `ai-assistant-api-metrics`, `selector`/`labels` `app: ai-assistant-api`.
-   - Descomentar `otelconfigmap.yaml` e `metricsService.yaml` em `k8s/base/kustomization.yaml`.
-   - Descomentar o sidecar `otel-collector` e o volume `otel-config` em `k8s/base/deployment.yaml`.
-   - Descomentar `OTEL_SERVICE_NAME`/`OTEL_EXPORTER_OTLP_ENDPOINT` em `k8s/overlays/dev/patch-deployment.yaml`, com `OTEL_SERVICE_NAME: "ai-assistant-api"`.
-5. Criar `k8s-infra/observability/prometheus-ai-assistant.yaml` (ou nome equivalente): `ServiceMonitor` selecionando `app: ai-assistant-api`, porta `metrics`, `interval: 15s`, label `release: monitoring` — mesmo padrão do `auth-api`.
-6. Remover `prometheus-fastapi-instrumentator` de `requirements.in` e recompilar `requirements.txt` via `pip-compile`.
+1. Nova rota `POST /api/v1/assistant/prompt` (nome definitivo a confirmar no plano), recebendo `{ "prompt": string }`.
+2. O serviço envia o prompt ao LLM (Ollama) com a tool `get_task_columns` disponível para tool-calling.
+3. Se o LLM decidir chamar a tool (porque o prompt pede/requer listar tarefas):
+   a. O serviço chama o `mcp_service` (tool `get_task_columns`), repassando o cookie de auth da requisição recebida.
+   b. O resultado (colunas + tarefas) é devolvido ao LLM para compor a resposta final em linguagem natural.
+4. Se o LLM não chamar a tool, a rota responde normalmente sem tocar no MCP service.
+5. A resposta da rota inclui:
+   - `message`: texto em linguagem natural (mesmo tom oráculo medieval do `advice`, ver `generate_advice.py`).
+   - `tasks`: dado estruturado das colunas/tarefas retornadas pelo MCP, quando a tool tiver sido chamada com sucesso; `null`/ausente quando não aplicável.
+6. Se a chamada ao MCP falhar (timeout, `ToolError`, 401/403, serviço indisponível), a rota **não retorna erro HTTP** — responde `200` com uma mensagem (tom oráculo) avisando que não foi possível consultar as tarefas no momento, e `tasks: null`.
+7. A rota exige autenticação JWT, seguindo o mesmo padrão das demais rotas do serviço (`CurrentUserDependency`).
 
 ## Requisitos Não Funcionais
 
-- Seguir Clean Architecture: setup de OTel fica em `app/infrastructure/observability/`; a métrica de LLM é registrada dentro de `OllamaProvider` (infra), sem vazar `opentelemetry` para `application`/`domain`.
-- Se o Collector sidecar não estiver acessível (ex.: rodando local via `uvicorn --reload` fora do k8s), a app não deve falhar ao subir — exporters OTLP devem falhar silenciosamente/logar erro no envio, não travar o request.
-- Nomes de métricas/recursos devem seguir convenção do OpenTelemetry (snake_case, unidade no sufixo, ex. `_seconds`).
+- Seguir Clean Architecture: contrato do cliente MCP definido em `application/interfaces/` (ex.: `McpClient` Protocol); implementação concreta em `app/infrastructure/mcp/`, espelhando o padrão de `app/infrastructure/llm/`.
+- Nova exceção de domínio (`app/domain/exceptions/domain_exceptions.py`) para falha de comunicação com o MCP service, seguindo o padrão de `LLMProviderException`.
+- Timeout configurável na chamada ao MCP service (não travar a rota indefinidamente se o `mcp_service`/`profile-api-service` ficar lento).
+- Nova(s) dependência(s) adicionada(s) via `requirements.in` + `pip-compile` (ex.: SDK oficial `mcp`), nunca editando `requirements.txt` à mão.
+- Config nova via `pydantic-settings` (`app/infrastructure/config/settings.py`) e documentada em `.env.example`, seguindo o padrão das seções existentes (`# LLM / Ollama`).
 
 ## Casos de Uso
 
-- Como operador do cluster, quero que o Prometheus Operator descubra o `ai-assistant-service` automaticamente via `ServiceMonitor`, sem configuração manual.
-- Como usuário do Grafana, quero ver no mesmo painel/datasource métricas de HTTP (requests, latência) e de negócio (latência de geração de conselho via LLM) do `ai-assistant-service`, consistente com o que já existe para o `auth-api`.
-- Como dev rodando local (`uvicorn --reload`, sem sidecar), quero que a app suba normalmente mesmo sem um Collector disponível em `localhost:4317`.
+- Como usuário, envio um prompt como "quais tarefas eu tenho pra hoje?" e recebo uma resposta em tom de oráculo junto com a lista real das minhas tarefas.
+- Como usuário, envio um prompt que não tem relação com tarefas (ex.: "me dê uma frase de motivação") e recebo resposta normal do LLM, sem chamada ao MCP.
+- Como usuário, envio um prompt pedindo tarefas mas minha sessão com o `profile-api-service` expirou (sem cookie válido) — recebo uma resposta educada dizendo que não consegui consultar as tarefas agora, sem erro 500.
 
 ## Critérios de Aceitação
 
-- Rodando local com o sidecar disponível (ou apontando `OTEL_EXPORTER_OTLP_ENDPOINT` para um collector de teste), requests HTTP e chamadas ao endpoint de advice geram spans e métricas visíveis no Collector/Prometheus.
-- `kubectl apply -k k8s/base` sobe o pod com os dois containers (app + otel-collector) e o `Service` de métricas na porta 8889.
-- `ServiceMonitor` novo aparece em `kubectl get servicemonitor -n life-gamefication-dev` e o Prometheus lista o target do `ai-assistant-service` como `up`.
-- `requirements.txt` não contém mais `prometheus-fastapi-instrumentator`/`prometheus-client`.
-- App sobe sem erro mesmo sem Collector acessível (dev local puro).
+- `POST /api/v1/assistant/prompt` com prompt relacionado a tarefas retorna `message` (texto) e `tasks` (lista de colunas) preenchidos, refletindo o retorno real do MCP service.
+- `POST /api/v1/assistant/prompt` com prompt não relacionado a tarefas retorna `message` preenchido e `tasks` nulo/ausente, sem nenhuma chamada ao MCP service.
+- Falha do MCP service (mockável em teste) resulta em resposta `200` com mensagem de fallback, nunca em erro 500 vazando para o cliente.
+- Rota protegida por JWT: requisição sem token válido retorna 401, igual às demais rotas.
+- `requirements.txt` atualizado via `pip-compile` contendo a(s) nova(s) dependência(s) MCP.
 
 ## Casos Limite
 
-- Falha na chamada ao Ollama (exceção em `GenerateAdviceUseCase`) deve registrar a métrica de duração com `status=error` mesmo quando a exceção é repropagada.
-- Ausência do Collector (rede indisponível) não deve derrubar a app nem adicionar latência perceptível às requests (exporters OTLP são assíncronos/batched).
+- Cookie de auth ausente na requisição de entrada, mas o prompt pede tarefas → tratado como falha do MCP (item 6 dos Requisitos Funcionais), não como erro de autenticação da própria rota.
+- LLM tenta chamar a tool mais de uma vez na mesma conversa (loop) → deve haver um limite de iterações de tool-calling para evitar loop infinito.
+- MCP retorna lista vazia de colunas (usuário sem tarefas) → `tasks: []`, mensagem deve refletir que não há tarefas, não deve ser tratado como erro.
+- Prompt vazio ou só espaços → validação de request (400), sem chamar LLM nem MCP.
 
 ## Fora do Escopo
 
-- Dashboards prontos do Grafana.
-- Deploy/configuração do Jaeger (o pipeline de traces já aponta pra ele, mas validar se está rodando não é escopo desta task).
-- Alertas/`PrometheusRule`.
-- Mudanças no `auth-service` ou em qualquer outro serviço.
-- Métricas de infraestrutura do Postgres além do que `opentelemetry-instrumentation-sqlalchemy` oferece de fábrica.
+- Criação/edição/conclusão de tarefas (somente listagem, via `get_task_columns`).
+- Qualquer mudança no `mcp_service` ou no `profile-api-service` (são consumidos como estão).
+- Alterar o fluxo/rota de `advice` existente.
+- Autenticação mTLS ou API key de serviço entre `ai-assistant-service` e `mcp_service` (assume-se rede interna confiável do cluster, a revisitar se necessário).
+- Cache de resultados do MCP service.
+- Suporte a outras tools MCP além de `get_task_columns`.
