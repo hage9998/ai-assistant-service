@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1"
     llm_temperature: float = 0.7
 
+    # MCP
+    mcp_service_url: str
+    mcp_timeout_seconds: float = 10.0
+    mcp_tool_call_max_iterations: int = 2
+
     # Logging
     log_level: str = "INFO"
 
