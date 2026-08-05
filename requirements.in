@@ -11,6 +11,7 @@ ollama
 langchain
 langchain-core
 langchain-ollama
+mcp
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-fastapi
