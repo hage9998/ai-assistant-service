@@ -26,10 +26,10 @@ This keeps the domain and application logic independent of frameworks and extern
 
 ### Key components
 
-- **Domain**: `AdviceLog`, `Message`/`MessageRole` entities and the `AdviceLogRepository` interface.
-- **Application**: `GenerateAdviceUseCase`, which builds the prompt, calls the `LLMProvider`, persists an `AdviceLog`, and returns the result.
-- **Infrastructure**: `OllamaProvider` (LangChain `ChatOllama` chain), SQLAlchemy session/models, JWT decoding.
-- **Presentation**: `/api/v1/advice` routes, Pydantic schemas, and FastAPI dependency providers.
+- **Domain**: `AdviceLog`, `Message`/`MessageRole`, `TaskColumn` entities and the `AdviceLogRepository` interface.
+- **Application**: `GenerateAdviceUseCase`, which builds the prompt, calls the `LLMProvider`, persists an `AdviceLog`, and returns the result. `HandlePromptUseCase`, which lets the LLM decide (via tool-calling) whether to call the MCP service to list tasks before answering a free-form prompt.
+- **Infrastructure**: `OllamaProvider` (LangChain `ChatOllama` chain, with tool-calling support), `McpServiceClient` (MCP Streamable HTTP client), SQLAlchemy session/models, JWT decoding.
+- **Presentation**: `/api/v1/advice` and `/api/v1/assistant` routes, Pydantic schemas, and FastAPI dependency providers.
 
 ## Tech Stack
 
@@ -47,6 +47,7 @@ This keeps the domain and application logic independent of frameworks and extern
 - Python 3.12+
 - A running PostgreSQL instance
 - [Ollama](https://ollama.com/) running locally with the desired model pulled (e.g. `ollama pull llama3.1`)
+- The MCP service reachable (for the `POST /assistant/prompt` task-listing flow)
 
 ### Setup
 
@@ -76,6 +77,9 @@ cp .env.example .env
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Model used for generation | `llama3.1` |
 | `LLM_TEMPERATURE` | Sampling temperature | `0.7` |
+| `MCP_SERVICE_URL` | MCP service URL (Streamable HTTP) | — |
+| `MCP_TIMEOUT_SECONDS` | Timeout for MCP service calls | `10.0` |
+| `MCP_TOOL_CALL_MAX_ITERATIONS` | Max LLM tool-calling iterations per prompt | `2` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
 ### Running database migrations
@@ -97,6 +101,10 @@ The interactive API docs will be available at `http://localhost:8000/docs`.
 ### `GET /advice/daily`
 
 Returns a short (3-4 sentence) medieval/mythical piece of advice to motivate the authenticated user. Intended to be called whenever the user enters the application's main screen. Requires a valid JWT bearer token.
+
+### `POST /assistant/prompt`
+
+Receives a free-form `prompt`. The LLM decides whether the prompt requires listing tasks; if so, it calls the MCP service's `get_task_columns` tool (forwarding the request's `Cookie` header) and composes the final answer using the returned data. Response includes the medieval/mythical `message` and, when applicable, the structured `tasks`. If the MCP service call fails, responds `200` with a fallback message instead of an error. Requires a valid JWT bearer token.
 
 ## Deployment
 
