@@ -1,7 +1,8 @@
+import json
 import logging
 
 import httpx2
-from mcp import ClientSession
+from mcp import ClientSession, types
 from mcp.client.streamable_http import streamable_http_client
 
 from app.domain.entities.task_column import TaskColumn
@@ -39,8 +40,30 @@ class McpServiceClient:
             logger.error("MCP tool %s returned an error result", _GET_TASK_COLUMNS_TOOL)
             raise McpClientException()
 
-        columns = result.structured_content or []
+        columns = self._extract_columns(result)
         return [
             TaskColumn(id=column["id"], name=column["name"], tasks=column.get("tasks", []))
             for column in columns
         ]
+
+    def _extract_columns(self, result: types.CallToolResult) -> list[dict]:
+        """Extracts the tool's JSON payload, preferring `structured_content`.
+
+        Some MCP protocol versions restrict `structured_content` to a JSON
+        object, so a server might return the column list as text content
+        instead. Fall back to parsing the first text block in that case.
+        """
+        if isinstance(result.structured_content, list):
+            return result.structured_content
+
+        for block in result.content:
+            text = getattr(block, "text", None)
+            if text:
+                try:
+                    parsed = json.loads(text)
+                except (TypeError, ValueError):
+                    continue
+                if isinstance(parsed, list):
+                    return parsed
+
+        return []
