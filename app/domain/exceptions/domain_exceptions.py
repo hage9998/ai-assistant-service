@@ -28,3 +28,10 @@ class LLMProviderException(DomainException):
 
     error_code = "llm_provider_error"
     message = "Failed to communicate with the language provider (LLM)."
+
+
+class McpClientException(DomainException):
+    """Raised when a communication failure with the MCP service occurs."""
+
+    error_code = "mcp_client_error"
+    message = "Failed to communicate with the MCP service."
